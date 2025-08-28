@@ -22,6 +22,8 @@ from Crypto.Util.Padding import unpad
 import base64
 import sys
 import time
+import signal
+import argparse
 
 def is_valid_plaintext(text):
     if text is None or len(text) < 3 or len(text) > 50:
@@ -63,10 +65,67 @@ def derive_key_iv_pbe(password, salt, iteration_count):
     return derived_key, derived_iv
 
 def main():
-    # Get inputs
-    salt_b64 = input("\nEnter the salt in base64 format (or press Enter to use brute force): ").strip()
-    password = input("Enter the password/key: ").strip()
-    ciphertext = input("Enter the ciphertext to decrypt: ").strip()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="PBE with MD5 and DES decryption tool - Decrypts data encrypted with Password-Based Encryption using MD5 and DES",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s -p "mypassword" -c "base64ciphertext"
+  %(prog)s -s "b64salt" -p "mypassword" -c "base64ciphertext"
+  %(prog)s --password "mypassword" --ciphertext "base64ciphertext" --brute-force
+  %(prog)s  # (interactive mode - no arguments)
+        """
+    )
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s 1.0')
+    parser.add_argument('-s', '--salt', 
+                       help='Base64-encoded salt (optional, will use brute force if not provided)')
+    parser.add_argument('-p', '--password', 
+                       help='Password/key for decryption')
+    parser.add_argument('-c', '--ciphertext', 
+                       help='Base64-encoded ciphertext to decrypt')
+    parser.add_argument('--brute-force', action='store_true',
+                       help='Force brute force mode even if salt is provided')
+    
+    args = parser.parse_args()
+    
+    # Check if required arguments are provided
+    if not args.password or not args.ciphertext:
+        print("No command line arguments provided. Switching to interactive mode...")
+        print()
+        # Fall back to interactive input
+        salt_b64 = input("Enter the salt in base64 format (or press Enter to use brute force): ").strip()
+        password = input("Enter the password/key: ").strip()
+        ciphertext = input("Enter the ciphertext to decrypt: ").strip()
+        
+        # Validate interactive inputs
+        if not password or not ciphertext:
+            print("Error: Password and ciphertext are required.")
+            return
+    else:
+        # Use command line arguments
+        salt_b64 = args.salt
+        password = args.password
+        ciphertext = args.ciphertext
+        
+        # If salt is provided but brute force is requested, clear the salt
+        if args.brute_force and salt_b64:
+            print("\n[!] Brute force mode requested - ignoring provided salt")
+            salt_b64 = None
+    
+    # Flag to track if user interrupted the process
+    interrupted = False
+    
+    def signal_handler(signum, frame):
+        nonlocal interrupted
+        interrupted = True
+        print("\n\n[!] Interrupted by user (Ctrl+C)")
+        print("[!] Finishing current iteration and exiting gracefully...")
+    
+    # Set up signal handler for Ctrl+C
+    signal.signal(signal.SIGINT, signal_handler)
+    
+
     
     # Check if user provided a salt
     user_salt = None
@@ -101,6 +160,11 @@ def main():
     password_bytes = password.encode('utf-8')
     
     for iterations in range(1, 5001):
+        # Check if user interrupted the process
+        if interrupted:
+            print(f"\n[!] Stopped at iteration {iterations-1}")
+            break
+            
         # If user provided a salt, only test with that salt
         if user_salt:
             configs_to_test = ["provided"]
@@ -175,8 +239,14 @@ def main():
     
     total_time = time.time() - start_time
     print()
-    print("=== DISCOVERY COMPLETE ===")
-    print("Total iterations tested: 5000")
+    
+    if interrupted:
+        print("=== DISCOVERY INTERRUPTED ===")
+        print(f"Total iterations tested: {iterations-1}")
+    else:
+        print("=== DISCOVERY COMPLETE ===")
+        print("Total iterations tested: 5000")
+    
     print("Total configurations per iteration: 3 (or 1 if salt provided)")
     print(f"Total tests performed: {total_tests}")
     print(f"Total valid results found: {valid_results}")

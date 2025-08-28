@@ -31,11 +31,41 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the script and follow the prompts:
+### Interactive Mode
+Run the script without arguments and follow the prompts:
 
 ```bash
 python PBEWithMD5AndDESdecrypt.py
 ```
+
+### Command Line Mode
+Pass arguments directly for automated/scripted use:
+
+```bash
+# Basic usage with password and ciphertext
+python PBEWithMD5AndDESdecrypt.py -p "mypassword" -c "base64ciphertext"
+
+# With specific salt
+python PBEWithMD5AndDESdecrypt.py -s "b64salt" -p "mypassword" -c "base64ciphertext"
+
+# Force brute force mode (ignores provided salt)
+python PBEWithMD5AndDESdecrypt.py -s "b64salt" -p "mypassword" -c "base64ciphertext" --brute-force
+
+# Show help
+python PBEWithMD5AndDESdecrypt.py -h
+
+# Show version
+python PBEWithMD5AndDESdecrypt.py -V
+```
+
+### Command Line Options
+
+- `-s, --salt`: Base64-encoded salt (optional, will use brute force if not provided)
+- `-p, --password`: Password/key for decryption (required)
+- `-c, --ciphertext`: Base64-encoded ciphertext to decrypt (required)
+- `--brute-force`: Force brute force mode even if salt is provided
+- `-h, --help`: Show help message
+- `-V, --version`: Show version information
 
 ### Input Parameters
 
