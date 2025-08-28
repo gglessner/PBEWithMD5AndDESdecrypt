@@ -1,4 +1,4 @@
-# PBEWithMD5AndDES
+# PBEWithMD5AndDESdecrypt
 
 A Python tool for decrypting data encrypted with Password-Based Encryption (PBE) using MD5 and DES algorithms. This tool can automatically discover encryption parameters and decrypt ciphertext when the password is known.
 
