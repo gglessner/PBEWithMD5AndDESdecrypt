@@ -137,32 +137,34 @@ Examples:
     
 
     
-    # Check if user provided a salt
+    # Check if user provided a salt and decode it if present
     user_salt = None
+    if salt_b64:
+        try:
+            user_salt = base64.b64decode(salt_b64)
+            print(f"\nUsing provided salt: {user_salt.hex()}")
+        except Exception:
+            print("Invalid base64 salt, falling back to brute force discovery.")
+            salt_b64 = ""
+            user_salt = None
+    
     # Determine iteration range and mode
     if args.iterations is not None:
         # Fixed iteration mode
         iteration_range = [args.iterations]
         print(f"\n=== Fixed Iteration Mode ===")
         print(f"Testing with fixed iteration count: {args.iterations}")
-        if salt_b64:
-            print(f"Using provided salt: {user_salt.hex()}")
+        if user_salt:
             print("Testing only with provided salt...")
         else:
             print("Testing configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
     else:
         # Brute force mode
         iteration_range = range(1, 5001)
-        if salt_b64:
-            try:
-                user_salt = base64.b64decode(salt_b64)
-                print(f"\nUsing provided salt: {user_salt.hex()}")
-                print("Testing only with provided salt and iteration range 1-5000...")
-            except Exception:
-                print("Invalid base64 salt, falling back to brute force discovery.")
-                salt_b64 = ""
+        if user_salt:
+            print("Testing only with provided salt and iteration range 1-5000...")
         
-        if not salt_b64:
+        if not user_salt:
             print("\n=== Brute Force Iteration and Configuration Discovery ===")
             print("Testing iterations from 1 to 5000...")
             print("Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
