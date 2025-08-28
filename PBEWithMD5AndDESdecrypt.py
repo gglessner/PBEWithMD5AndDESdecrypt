@@ -84,10 +84,18 @@ Examples:
                        help='Password/key for decryption')
     parser.add_argument('-c', '--ciphertext', 
                        help='Base64-encoded ciphertext to decrypt')
+    parser.add_argument('-i', '--iterations', type=int, metavar='N',
+                       help='Fixed iteration count (1-5000, skips brute force discovery)')
     parser.add_argument('--brute-force', action='store_true',
                        help='Force brute force mode even if salt is provided')
     
     args = parser.parse_args()
+    
+    # Validate iterations argument if provided
+    if args.iterations is not None:
+        if args.iterations < 1 or args.iterations > 5000:
+            print("Error: Iterations must be between 1 and 5000.")
+            return
     
     # Check if required arguments are provided
     if not args.password or not args.ciphertext:
@@ -129,19 +137,33 @@ Examples:
     
     # Check if user provided a salt
     user_salt = None
-    if salt_b64:
-        try:
-            user_salt = base64.b64decode(salt_b64)
-            print(f"\nUsing provided salt: {user_salt.hex()}")
-            print("Testing only with provided salt and iteration range 1-5000...")
-        except Exception:
-            print("Invalid base64 salt, falling back to brute force discovery.")
-            salt_b64 = ""
-    
-    if not salt_b64:
-        print("\n=== Brute Force Iteration and Configuration Discovery ===")
-        print("Testing iterations from 1 to 5000...")
-        print("Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
+    # Determine iteration range and mode
+    if args.iterations is not None:
+        # Fixed iteration mode
+        iteration_range = [args.iterations]
+        print(f"\n=== Fixed Iteration Mode ===")
+        print(f"Testing with fixed iteration count: {args.iterations}")
+        if salt_b64:
+            print(f"Using provided salt: {user_salt.hex()}")
+            print("Testing only with provided salt...")
+        else:
+            print("Testing configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
+    else:
+        # Brute force mode
+        iteration_range = range(1, 5001)
+        if salt_b64:
+            try:
+                user_salt = base64.b64decode(salt_b64)
+                print(f"\nUsing provided salt: {user_salt.hex()}")
+                print("Testing only with provided salt and iteration range 1-5000...")
+            except Exception:
+                print("Invalid base64 salt, falling back to brute force discovery.")
+                salt_b64 = ""
+        
+        if not salt_b64:
+            print("\n=== Brute Force Iteration and Configuration Discovery ===")
+            print("Testing iterations from 1 to 5000...")
+            print("Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
     
     print(f"Password: {password}")
     print(f"Target: {ciphertext[:50]}...")
@@ -159,7 +181,7 @@ Examples:
     
     password_bytes = password.encode('utf-8')
     
-    for iterations in range(1, 5001):
+    for iterations in iteration_range:
         # Check if user interrupted the process
         if interrupted:
             print(f"\n[!] Stopped at iteration {iterations-1}")
@@ -231,8 +253,8 @@ Examples:
                 # Decryption failed for this configuration - continue silently
                 pass
         
-        # Progress update every 100 iterations
-        if iterations % 100 == 0:
+        # Progress update every 100 iterations (only in brute force mode)
+        if args.iterations is None and iterations % 100 == 0:
             elapsed = time.time() - start_time
             speed = total_tests / elapsed if elapsed > 0 else 0
             print(f"Progress: {iterations}/5000 iterations ({iterations / 5000 * 100:.1f}%) - Speed: {speed:.1f} tests/sec - Found: {valid_results} results")
@@ -240,7 +262,11 @@ Examples:
     total_time = time.time() - start_time
     print()
     
-    if interrupted:
+    if args.iterations is not None:
+        # Fixed iteration mode summary
+        print("=== FIXED ITERATION MODE COMPLETE ===")
+        print(f"Fixed iteration count: {args.iterations}")
+    elif interrupted:
         print("=== DISCOVERY INTERRUPTED ===")
         print(f"Total iterations tested: {iterations-1}")
     else:

@@ -48,6 +48,9 @@ python PBEWithMD5AndDESdecrypt.py -p "mypassword" -c "base64ciphertext"
 # With specific salt
 python PBEWithMD5AndDESdecrypt.py -s "b64salt" -p "mypassword" -c "base64ciphertext"
 
+# With fixed iteration count (skips brute force)
+python PBEWithMD5AndDESdecrypt.py -i 1000 -p "mypassword" -c "base64ciphertext"
+
 # Force brute force mode (ignores provided salt)
 python PBEWithMD5AndDESdecrypt.py -s "b64salt" -p "mypassword" -c "base64ciphertext" --brute-force
 
@@ -63,15 +66,24 @@ python PBEWithMD5AndDESdecrypt.py -V
 - `-s, --salt`: Base64-encoded salt (optional, will use brute force if not provided)
 - `-p, --password`: Password/key for decryption (required)
 - `-c, --ciphertext`: Base64-encoded ciphertext to decrypt (required)
+- `-i, --iterations N`: Fixed iteration count (1-5000, skips brute force discovery)
 - `--brute-force`: Force brute force mode even if salt is provided
 - `-h, --help`: Show help message
 - `-V, --version`: Show version information
+
+### Modes of Operation
+
+- **Interactive Mode**: Run without arguments for interactive prompts
+- **Command Line Mode**: Pass arguments for automated/scripted use
+- **Brute Force Mode**: Test iterations 1-5000 to discover encryption parameters
+- **Fixed Iteration Mode**: Test with a specific iteration count (use `-i` option)
 
 ### Input Parameters
 
 1. **Salt** (optional): Base64-encoded salt, or press Enter for brute force discovery
 2. **Password**: The encryption password/key
 3. **Ciphertext**: Base64-encoded encrypted data
+4. **Iterations** (optional): Fixed iteration count when known
 
 ### Example Session
 
