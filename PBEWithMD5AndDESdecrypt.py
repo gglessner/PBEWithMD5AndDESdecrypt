@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 PBEWithMD5AndDES - Password-Based Encryption with MD5 and DES
 Copyright (C) 2024 Garland Glessner <gglessner@gmail.com>
