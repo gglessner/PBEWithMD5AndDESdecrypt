@@ -40,6 +40,22 @@ def is_valid_plaintext(text):
     alphanumeric_count = sum(1 for c in text if c.isalnum())
     return alphanumeric_count >= len(text) // 2
 
+def is_hex_string(text):
+    """Check if a string contains only hexadecimal characters."""
+    if not text:
+        return False
+    return all(c in '0123456789abcdefABCDEF' for c in text)
+
+def hex_to_bytes(hex_string):
+    """Convert a hexadecimal string to bytes."""
+    # Remove any '0x' prefix if present
+    if hex_string.startswith('0x'):
+        hex_string = hex_string[2:]
+    # Ensure even length by padding with leading zero if needed
+    if len(hex_string) % 2 != 0:
+        hex_string = '0' + hex_string
+    return bytes.fromhex(hex_string)
+
 def derive_key_iv_pbe(password, salt, iteration_count):
     """
     Derive key and IV using PBE with MD5 (PKCS#5 style).
@@ -141,10 +157,16 @@ Examples:
     user_salt = None
     if salt_b64:
         try:
-            user_salt = base64.b64decode(salt_b64)
-            print(f"\nUsing provided salt: {user_salt.hex()}")
+            # Check if salt is hexadecimal
+            if is_hex_string(salt_b64):
+                user_salt = hex_to_bytes(salt_b64)
+                print(f"\nUsing provided hexadecimal salt: {user_salt.hex()}")
+            else:
+                # Try base64 decode
+                user_salt = base64.b64decode(salt_b64)
+                print(f"\nUsing provided base64 salt: {user_salt.hex()}")
         except Exception:
-            print("Invalid base64 salt, falling back to brute force discovery.")
+            print("Invalid salt format, falling back to brute force discovery.")
             salt_b64 = ""
             user_salt = None
     
@@ -159,15 +181,17 @@ Examples:
         else:
             print("Testing configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
     else:
-        # Brute force mode
-        iteration_range = range(1, 5001)
+        # Brute force mode - try 1000 first, then brute force
         if user_salt:
             print("Testing only with provided salt and iteration range 1-5000...")
-        
-        if not user_salt:
+            # Try 1000 first, then brute force
+            iteration_range = [1000] + list(range(1, 5001))
+        else:
             print("\n=== Brute Force Iteration and Configuration Discovery ===")
-            print("Testing iterations from 1 to 5000...")
+            print("Testing iterations: 1000 (default) first, then 1-5000...")
             print("Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
+            # Try 1000 first, then brute force
+            iteration_range = [1000] + list(range(1, 5001))
     
     print(f"Password: {password}")
     print(f"Target: {ciphertext[:50]}...")
@@ -253,6 +277,10 @@ Examples:
                     print(f"Length: {len(decrypted)}")
                     print(f"Time taken: {elapsed:.1f} seconds")
                     print()
+                    
+                    # Stop after first valid result found
+                    print("Password found! Exiting...")
+                    return
             except Exception:
                 # Decryption failed for this configuration - continue silently
                 pass

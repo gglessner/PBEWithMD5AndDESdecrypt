@@ -9,16 +9,19 @@ This tool implements PBE with MD5 and DES as used in Jasypt and similar encrypti
 - **Prepended salt**: 8-byte salt at the beginning of ciphertext
 - **Appended salt**: 8-byte salt at the end of ciphertext  
 - **No salt**: Fixed zero salt
-- **Custom salt**: User-provided salt in base64 format
+- **Custom salt**: User-provided salt in base64 or hexadecimal format
 
 ## Features
 
 - Automatic parameter discovery (iteration count, salt position)
 - Support for multiple salt configurations
+- **Hexadecimal salt support**: Automatically detects and handles hex-encoded salts
+- **Smart iteration priority**: Tests 1000 iterations first (common default) before brute forcing
+- **Fast exit**: Stops immediately after finding the first valid result
 - Brute force iteration testing (1-5000 iterations)
 - Validation of decrypted plaintext
 - Progress tracking and performance metrics
-- Base64 input/output support
+- Base64 and hexadecimal input support
 
 ## Installation
 
@@ -63,7 +66,7 @@ python PBEWithMD5AndDESdecrypt.py -V
 
 ### Command Line Options
 
-- `-s, --salt`: Base64-encoded salt (optional, will use brute force if not provided)
+- `-s, --salt`: Salt in base64 or hexadecimal format (optional, will use brute force if not provided)
 - `-p, --password`: Password/key for decryption (required)
 - `-c, --ciphertext`: Base64-encoded ciphertext to decrypt (required)
 - `-i, --iterations N`: Fixed iteration count (1-5000, skips brute force discovery)
@@ -80,7 +83,10 @@ python PBEWithMD5AndDESdecrypt.py -V
 
 ### Input Parameters
 
-1. **Salt** (optional): Base64-encoded salt, or press Enter for brute force discovery
+1. **Salt** (optional): 
+   - Base64-encoded salt, or 
+   - Hexadecimal string (e.g., "a1b2c3d4" or "0xa1b2c3d4"), or
+   - Press Enter for brute force discovery
 2. **Password**: The encryption password/key
 3. **Ciphertext**: Base64-encoded encrypted data
 4. **Iterations** (optional): Fixed iteration count when known
@@ -93,7 +99,7 @@ Enter the password/key: abc
 Enter the ciphertext to decrypt: 5hnCuGuxUo7kjXQ+YwB3WmlUzh3QHq+S
 
 === Brute Force Iteration and Configuration Discovery ===
-Testing iterations from 1 to 5000...
+Testing iterations: 1000 (default) first, then 1-5000...
 Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)
 Password: abc
 Target: 5hnCuGuxUo7kjXQ+YwB3WmlUzh3QHq+S...
@@ -104,6 +110,8 @@ Configuration: Prepended salt (8 bytes)
 Decrypted text: 'thisisatest'
 Length: 12
 Time taken: 0.1 seconds
+
+Password found! Exiting...
 ```
 
 ## Technical Details
@@ -126,13 +134,14 @@ Time taken: 0.1 seconds
 - **Prepended**: Salt is first 8 bytes of ciphertext
 - **Appended**: Salt is last 8 bytes of ciphertext
 - **None**: Uses 8 bytes of zeros as salt
-- **Custom**: User-provided salt (base64 encoded)
+- **Custom**: User-provided salt (base64 or hexadecimal encoded)
 
 ## Output
 
 The tool provides:
 - Valid decryption results with parameters
-- Progress updates every 100 iterations
+- **Immediate exit** after finding the first successful result
+- Progress updates every 100 iterations (in brute force mode)
 - Performance metrics (tests/second)
 - Summary of total tests performed
 - Time taken for discovery
@@ -181,13 +190,17 @@ Garland Glessner <gglessner@gmail.com>
    - Verify ciphertext format
    - Consider different salt configurations
    - Iteration count may exceed 5000
+3. **"Invalid salt format"**: Ensure salt is either valid base64 or hexadecimal format
 
 ### Performance Tips
 
 - Use specific salt when known (faster than brute force)
+- **Hex salts are automatically detected** - no need to convert to base64
+- **1000 iterations are tested first** - most common default for PBEWithMD5AndDES
 - For large iteration counts, consider increasing the range in the code
 - Monitor system resources during long-running tests
 
 ## Contributing
 
 Contributions are welcome! Please ensure any modifications maintain compatibility with the existing PBE standard and include appropriate testing.
+
