@@ -184,14 +184,12 @@ Examples:
         # Brute force mode - try 1000 first, then brute force
         if user_salt:
             print("Testing only with provided salt and iteration range 1-5000...")
-            # Try 1000 first, then brute force
-            iteration_range = [1000] + list(range(1, 5001))
+            print("Testing 1000 iterations first (common default)...")
         else:
             print("\n=== Brute Force Iteration and Configuration Discovery ===")
             print("Testing iterations: 1000 (default) first, then 1-5000...")
             print("Configurations: Prepended salt (8 bytes), No salt (zero salt), Appended salt (8 bytes)")
-            # Try 1000 first, then brute force
-            iteration_range = [1000] + list(range(1, 5001))
+            print("Testing 1000 iterations first (common default)...")
     
     print(f"Password: {password}")
     print(f"Target: {ciphertext[:50]}...")
@@ -209,6 +207,88 @@ Examples:
     
     password_bytes = password.encode('utf-8')
     
+    # First, test with 1000 iterations if not in fixed mode
+    if args.iterations is None:
+        print("Testing 1000 iterations first...")
+        for iterations in [1000]:
+            # If user provided a salt, only test with that salt
+            if user_salt:
+                configs_to_test = ["provided"]
+            else:
+                configs_to_test = ["prepended", "none", "appended"]
+                
+            for config in configs_to_test:
+                total_tests += 1
+                try:
+                    config_desc = ""
+                    to_decrypt = full_bytes
+                    salt = None
+                    
+                    if config == "provided":
+                        config_desc = f"Provided salt (base64: {salt_b64})"
+                        salt = user_salt
+                        to_decrypt = full_bytes  # Use full ciphertext with provided salt
+                    elif config == "prepended":
+                        config_desc = "Prepended salt (8 bytes)"
+                        if len(full_bytes) < 16 or len(full_bytes) % 8 != 0:
+                            continue
+                        salt = full_bytes[:8]
+                        to_decrypt = full_bytes[8:]
+                    elif config == "none":
+                        config_desc = "No salt (fixed zero salt)"
+                        salt = b'\x00' * 8
+                    elif config == "appended":
+                        config_desc = "Appended salt (8 bytes)"
+                        if len(full_bytes) < 16 or len(full_bytes) % 8 != 0:
+                            continue
+                        salt = full_bytes[-8:]
+                        to_decrypt = full_bytes[:-8]
+
+                    
+                    # Derive key and IV
+                    derived_key, derived_iv = derive_key_iv_pbe(password_bytes, salt, iterations)
+                    
+                    # Create cipher (CBC mode)
+                    cipher = DES.new(derived_key, DES.MODE_CBC, derived_iv)
+                    
+                    # Decrypt
+                    dec_bytes_padded = cipher.decrypt(to_decrypt)
+                    
+                    # Unpad
+                    dec_bytes = unpad(dec_bytes_padded, DES.block_size)
+                    
+                    # Decode to UTF-8
+                    decrypted = dec_bytes.decode('utf-8')
+                    
+                    # Validate
+                    if is_valid_plaintext(decrypted):
+                        valid_results += 1
+                        elapsed = time.time() - start_time
+                        
+                        print()
+                        print(f"*** VALID RESULT FOUND #{valid_results} ***")
+                        print(f"Iterations: {iterations}")
+                        print(f"Configuration: {config_desc}")
+                        print(f"Decrypted text: '{decrypted}'")
+                        print(f"Length: {len(decrypted)}")
+                        print(f"Time taken: {elapsed:.1f} seconds")
+                        print()
+                        
+                        # Stop after first valid result found
+                        print("Password found! Exiting...")
+                        return
+                except Exception:
+                    # Decryption failed for this configuration - continue silently
+                    pass
+        
+        # If we get here, 1000 iterations didn't work, start brute force
+        print("1000 iterations failed. Starting brute force from 1-5000...")
+        iteration_range = range(1, 5001)
+    else:
+        # Fixed iteration mode
+        iteration_range = [args.iterations]
+    
+    # Now test the remaining iterations (either brute force or fixed)
     for iterations in iteration_range:
         # Check if user interrupted the process
         if interrupted:
