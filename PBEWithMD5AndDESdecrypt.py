@@ -286,7 +286,7 @@ Examples:
                 pass
         
         # Progress update every 100 iterations (only in brute force mode)
-        if args.iterations is None and iterations % 100 == 0:
+        if args.iterations is None and iterations % 100 == 0 and iterations > 1000:
             elapsed = time.time() - start_time
             speed = total_tests / elapsed if elapsed > 0 else 0
             print(f"Progress: {iterations}/5000 iterations ({iterations / 5000 * 100:.1f}%) - Speed: {speed:.1f} tests/sec - Found: {valid_results} results")
